@@ -2,11 +2,11 @@ module Apie.Auth where
 
 import Prelude
 
-import Affjax (Error(..), defaultRequest, request, printError)
+import Affjax (defaultRequest, request)
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as RF
-import Apie.Types (ApieError(..), ApieH)
-import Data.Argonaut as A
+import Apie.Types (Apie, ApieError)
+import Apie.Utils (parseResponse)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), isJust)
@@ -22,7 +22,7 @@ type User =
 type Auth = { user :: User }
 type Info = { auth :: Auth }
 
-getUserInfo :: ApieH -> Aff (Either ApieError String)
+getUserInfo :: Apie -> Aff (Either ApieError String)
 getUserInfo h = do
     let req = defaultRequest
             { url = h.baseURL <> "/info"
@@ -35,14 +35,10 @@ getUserInfo h = do
             , password = h.password
             , withCredentials = isJust h.username
             }
-    res <- request req
-    case res of
-        Right resp -> do
-            case A.decodeJson (resp.body) of
-                Right (info :: Info) -> pure (Right (info.auth.user.info))
-                Left err -> pure (Left (DeserialisationError err))
-        Left (ResponseBodyError err _) -> pure (Left (DeserialisationError (show err)))
-        Left err -> pure (Left (UnknownError (printError err)))
+    resp <- request req
+    case parseResponse resp of
+        Right (info :: Info) -> pure (Right info.auth.user.info)
+        Left err -> pure (Left err)
 
 addAuthHeader :: Maybe String -> Maybe String -> Array RequestHeader -> Array RequestHeader
 addAuthHeader (Just user) (Just pass) hs = hs <> [RequestHeader "Authorization" header]

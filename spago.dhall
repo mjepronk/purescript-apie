@@ -7,6 +7,7 @@ You can edit this file as you like.
     [ "affjax"
     , "argonaut"
     , "argonaut-codecs"
+    , "b64"
     , "console"
     , "effect"
     , "foreign"
@@ -14,8 +15,7 @@ You can edit this file as you like.
     , "media-types"
     , "parsing"
     , "psci-support"
-    , "uri"
-    , "b64"
+    , "web-url"
     ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

@@ -1,7 +1,7 @@
 module Apie.Types
   ( Hash
   , URL
-  , ApieH
+  , Apie
   , ApieError(..)
   )
 where
@@ -13,17 +13,23 @@ import Data.Maybe (Maybe)
 type Hash = String
 type URL = String
 
-type ApieH =
+type Apie =
     { baseURL :: URL
     , username :: Maybe String
     , password :: Maybe String
     }
 
 data ApieError
-    = DeserialisationError String
-    | UnknownError String
+    = AuthenticationError
+    | DeserialisationError String
+    | DoesNotMatchExpected String
+    | ResourceNotFound String
+    | UnexpectedError String
 
 instance showApieError :: Show ApieError where
   show = case _ of
+    AuthenticationError -> "Authentication error"
     DeserialisationError x -> "Could not deserialize event:" <> x
-    UnknownError x -> "Unknown error: " <> x
+    DoesNotMatchExpected x -> "Does not match expected version: " <> x
+    ResourceNotFound x -> "Resource not found: " <> x
+    UnexpectedError x -> "Unknown error: " <> x

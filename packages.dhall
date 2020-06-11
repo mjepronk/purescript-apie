@@ -123,6 +123,12 @@ let upstream =
 
 let overrides = {=}
 
-let additions = {=}
+let additions =
+    { web-url =
+        { dependencies = ["maybe", "partial", "prelude", "psci-support", "spec", "tuples" ]
+        , repo = "https://github.com/mjepronk/purescript-web-url.git"
+        , version = "v1.0.1"
+        }
+    }
 
 in  upstream // overrides // additions

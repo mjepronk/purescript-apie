@@ -9,29 +9,29 @@ where
 
 import Prelude
 
-import Affjax (Error(..), defaultRequest, request, printError)
+import Affjax (defaultRequest, printError, request)
 import Affjax.RequestBody as RB
 import Affjax.RequestHeader (RequestHeader(..))
-import Affjax.ResponseHeader as RH
 import Affjax.ResponseFormat as RF
-import Apie.ISODateTime (ISODateTime(..))
-import Apie.Types (ApieError(..), ApieH, Hash)
+import Affjax.ResponseHeader as RH
 import Apie.Auth (addAuthHeader)
+import Apie.ISODateTime (ISODateTime(..))
+import Apie.Types (ApieError(..), Apie, Hash)
 import Apie.UUID (UUID)
 import Apie.UUID as UUID
+import Apie.Utils (parseResponse)
 import Data.Argonaut (Json, class EncodeJson, class DecodeJson, (.:), (:=), (~>))
 import Data.Argonaut as A
-import Data.Array (catMaybes, find)
+import Data.Array (find)
 import Data.DateTime (DateTime)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..), maybe, isJust)
 import Data.MediaType.Common (applicationJSON)
 import Data.Newtype (unwrap)
-import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
-import URI.Extra.QueryPairs as QP
-import URI.Query as Q
+import Web.URL as URL
+import Web.URL.URLSearchParams as USP
 
 
 newtype NewEvent = NewEvent
@@ -87,7 +87,7 @@ instance decodeJsonEvent :: DecodeJson Event where
             Nothing -> Left ("Invalid UUID")
 
 
-appendEvent :: ApieH -> NewEvent -> Aff (Either ApieError Event)
+appendEvent :: Apie -> NewEvent -> Aff (Either ApieError Event)
 appendEvent h newEvent = do
     let req = defaultRequest
             { url = h.baseURL <> "/events"
@@ -101,19 +101,13 @@ appendEvent h newEvent = do
             , password = h.password
             , withCredentials = isJust h.username
             }
-    res <- request req
-    case res of
-        Right resp -> do
-            case A.decodeJson (resp.body) of
-                Right event -> pure (Right event)
-                Left err -> pure (Left (DeserialisationError err))
-        Left (ResponseBodyError err _) -> pure (Left (DeserialisationError (show err)))
-        Left err -> pure (Left (UnknownError (printError err)))
+    resp <- request req
+    pure (parseResponse resp)
 
-getEvents :: ApieH -> Maybe Hash -> Maybe Hash -> Aff (Either ApieError (Array Event))
+getEvents :: Apie -> Maybe Hash -> Maybe Hash -> Aff (Either ApieError (Array Event))
 getEvents h fromHash toHash = do
     let req = defaultRequest
-            { url = h.baseURL <> "/events" <> parameters
+            { url = URL.href url
             , method = Left GET
             , responseFormat = RF.json
             , headers =
@@ -123,19 +117,17 @@ getEvents h fromHash toHash = do
             , password = h.password
             , withCredentials = isJust h.username
             }
-    res <- request req
-    case res of
-        Right resp -> do
-            case A.decodeJson (resp.body) of
-                Right event -> pure (Right event)
-                Left err -> pure (Left (DeserialisationError err))
-        Left (ResponseBodyError err _) -> pure (Left (DeserialisationError (show err)))
-        Left err -> pure (Left (UnknownError (printError err)))
+    resp <- request req
+    pure (parseResponse resp)
   where
-    parameters = Q.print $ QP.print QP.keyFromString QP.valueFromString (QP.QueryPairs
-        (catMaybes [(Tuple "from" <<< Just) <$> fromHash, (Tuple "to" <<< Just) <$> toHash]))
+    url = URL.unsafeFromAbsolute (h.baseURL <> "/events")
+          # (URL.setSearch <<< USP.toString
+            $ USP.fromString ""
+            # maybe identity (USP.append "from") fromHash
+            # maybe identity (USP.append "to") toHash)
 
-getEventsHead :: ApieH -> Aff (Either ApieError (Maybe Hash))
+
+getEventsHead :: Apie -> Aff (Either ApieError (Maybe Hash))
 getEventsHead h = do
     let req = defaultRequest
             { url = h.baseURL <> "/events"
@@ -145,10 +137,10 @@ getEventsHead h = do
             , password = h.password
             , withCredentials = isJust h.username
             }
-    res <- request req
-    case res of
-        Right resp -> do
-            pure (Right (getHash resp))
-        Left err -> pure (Left (UnknownError (printError err)))
+    resp <- request req
+    case resp of
+        Right r -> pure (Right (getHash r))
+        Left err -> pure (Left (UnexpectedError (printError err)))
   where
-    getHash resp = RH.value <$> (find (\hdr -> RH.name hdr == "etag") resp.headers)
+    getHash resp = RH.value <$> (find (
+        \hdr -> RH.name hdr == "etag" || RH.name hdr == "x-apie-hash") resp.headers)
