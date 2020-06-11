@@ -7,7 +7,8 @@ where
 
 import Prelude
 
-import Data.Argonaut (Json, (.:), fromObject, toObject)
+import Data.Bifunctor (lmap)
+import Data.Argonaut (Json, (.:), fromObject, toObject, printJsonDecodeError)
 import Data.Either (Either, note)
 import Data.Maybe (Maybe(..))
 import Foreign.Object (lookup, filterWithKey, union)
@@ -29,5 +30,5 @@ apply old new = do
 getIdField :: Json -> Either String String
 getIdField json = do
   obj <- note "Not an object" (toObject json)
-  id <- obj .: "id"
+  id <- lmap printJsonDecodeError $ obj .: "id"
   pure id

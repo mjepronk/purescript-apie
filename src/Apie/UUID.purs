@@ -8,7 +8,7 @@ where
 
 import Prelude
 
-import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut (class DecodeJson, class EncodeJson, JsonDecodeError(..))
 import Data.Argonaut as A
 import Data.Array (elem)
 import Data.Char.Unicode (digitToInt)
@@ -29,7 +29,7 @@ derive newtype instance encodeJsonUUID :: EncodeJson UUID
 instance decodeJsonUUID :: DecodeJson UUID where
   decodeJson json = do
     str <- A.decodeJson json
-    note "Invalid UUID" (parseUUID str)
+    note (UnexpectedValue json) (parseUUID str)
 
 foreign import randomUUID :: Effect UUID
 

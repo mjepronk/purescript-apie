@@ -7,7 +7,7 @@ where
 
 import Prelude
 
-import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut (class DecodeJson, class EncodeJson, JsonDecodeError(..))
 import Data.Argonaut as A
 import Data.Date (Date)
 import Data.DateTime (DateTime(..), date)
@@ -38,12 +38,12 @@ toString = format isoDateFormat <<< flip DateTime midnight <<< unwrap
 fromString :: String -> Maybe ISODate
 fromString = hush <<< fromString'
 
-fromString' :: String -> Either String ISODate
+fromString' :: String -> Either JsonDecodeError ISODate
 fromString' str = do
     p <- P.runParserT str (unformatParser isoDateFormat)
     case p of
         Right dt -> Right (ISODate (date dt))
-        Left err -> Left (show err)
+        Left err -> Left (UnexpectedValue (A.fromString str))
 
 isoDateFormat ∷ Formatter
 isoDateFormat = unsafePartial fromRight $ parseFormatString "YYYY-MM-DD"

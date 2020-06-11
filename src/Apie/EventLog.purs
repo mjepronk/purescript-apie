@@ -20,7 +20,7 @@ import Apie.Types (ApieError(..), Apie, Hash)
 import Apie.UUID (UUID)
 import Apie.UUID as UUID
 import Apie.Utils (parseResponse)
-import Data.Argonaut (Json, class EncodeJson, class DecodeJson, (.:), (:=), (~>))
+import Data.Argonaut (Json, class EncodeJson, class DecodeJson, JsonDecodeError, (.:), (:=), (~>))
 import Data.Argonaut as A
 import Data.Array (find)
 import Data.DateTime (DateTime)
@@ -75,16 +75,13 @@ instance encodeJsonEvent :: EncodeJson Event where
 instance decodeJsonEvent :: DecodeJson Event where
     decodeJson json = do
         x <- A.decodeJson json
-        eventIdRaw <- x .: "eventId"
+        eventId <- x .: "eventId"
         eventType <- x .: "eventType"
         body <- x .: "body"
-        createdAt <- unwrap <$> (x .: "createdAt" :: Either String ISODateTime)
+        createdAt <- unwrap <$> (x .: "createdAt" :: Either JsonDecodeError ISODateTime)
         createdBy <- x .: "createdBy"
         hash <- x .: "hash"
-        case UUID.parseUUID eventIdRaw of
-            Just eventId -> do
-                pure $ Event { eventId, eventType, body, createdAt, createdBy, hash }
-            Nothing -> Left ("Invalid UUID")
+        pure $ Event { eventId, eventType, body, createdAt, createdBy, hash }
 
 
 appendEvent :: Apie -> NewEvent -> Aff (Either ApieError Event)

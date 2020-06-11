@@ -5,7 +5,7 @@ where
 
 import Prelude
 
-import Data.Argonaut (class DecodeJson, class EncodeJson)
+import Data.Argonaut (class DecodeJson, class EncodeJson, JsonDecodeError(..))
 import Data.Argonaut as A
 import Data.DateTime (DateTime)
 import Data.Either (Either(..), fromRight)
@@ -27,7 +27,7 @@ instance decodeJsonISODateTime :: DecodeJson ISODateTime where
         p <- P.runParserT str (unformatParser isoDateTimeFormat)
         case p of
             Right dt -> Right (ISODateTime dt)
-            Left err -> Left (show err)
+            Left _ -> Left (UnexpectedValue json)
 
 isoDateTimeFormat ∷ Formatter
 isoDateTimeFormat = unsafePartial fromRight $
